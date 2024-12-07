@@ -9,6 +9,10 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
+const getAccounts = () => {
+    return fs.readFileSync('accounts.txt', 'utf8').split('\n').map(line => line.trim()).filter(Boolean);
+};
+
 const askQuestion = (query) => {
     return new Promise((resolve) => rl.question(query, resolve));
 };
@@ -58,52 +62,61 @@ const registerUser = async () => {
     const maxRetries = 5;
     let attempt = 0;
 
-    const email = await askQuestion('Enter your email: ');
-    const password = await askQuestion('Enter your password: ');
-
-    if (!email || !password) {
-        logger('Both email and password are required.', 'error');
-        return;
-    }
-
-    while (attempt < maxRetries) {
-        try {
-            const inviteCode = 'ol41fe134b';
-            const registrationPayload = { name: email, username: email, password, inviteCode };
-
-            const registerResponse = await fetch('https://api.openloop.so/users/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(registrationPayload),
-            });
-
-            if (registerResponse.status === 401) {
-                logger('Email already exists. Attempting to login...');
-                await loginUser(email, password);
-                return; 
-            }
-
-            if (!registerResponse.ok) {
-                throw new Error(`Registration failed! Status: ${registerResponse.status}`);
-            }
-
-            const registerData = await registerResponse.json();
-            logger('Registration successful:', 'success', registerData.message);
-
-            await loginUser(email, password); 
+    const accounts = getAccounts();//jeff add
+    for (let i = 0; i < accounts.length; i++) {
+        const account = accounts[i];
+        var acc = account.toString().split(":");   
+        const email = acc[0];
+        const password = acc[1];
+        //const email = await askQuestion('Enter your email: ');
+        //const password = await askQuestion('Enter your password: ');
+    
+        if (!email || !password) {
+            logger('Both email and password are required.', 'error');
             return;
-        } catch (error) {
-            attempt++;
-            logger(`Attempt ${attempt} failed. Error: ${error.message}`, 'error');
-
-            if (attempt >= maxRetries) {
-                logger('Max retries reached for registration/login. Aborting...', 'error');
-                return; 
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, 1000)); 
         }
-    }
+
+        while (attempt < maxRetries) {
+            try {
+                const inviteCode = 'ol053ea401';
+                const registrationPayload = { name: email, username: email, password, inviteCode };
+    
+                const registerResponse = await fetch('https://api.openloop.so/users/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(registrationPayload),
+                });
+    
+                if (registerResponse.status === 401) {
+                    logger('Email already exists. Attempting to login...');
+                    await loginUser(email, password);
+                    return; 
+                }
+
+                if (!registerResponse.ok) {
+                    throw new Error(`Registration failed! Status: ${registerResponse.status}`);
+                }
+    
+                const registerData = await registerResponse.json();
+                logger('Registration successful:', 'success', registerData.message);
+    
+                await loginUser(email, password); 
+                return;
+            } catch (error) {
+                attempt++;
+                logger(`Attempt ${attempt} failed. Error: ${error.message}`, 'error');
+    
+                if (attempt >= maxRetries) {
+                    logger('Max retries reached for registration/login. Aborting...', 'error');
+                    return; 
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, 1000)); 
+            }
+        }
+
+    }//jeffadd
+    
 };
 
 
